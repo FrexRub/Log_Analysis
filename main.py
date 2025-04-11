@@ -1,6 +1,7 @@
 import os.path
 import sys
 import re
+from multiprocessing import Pool, cpu_count
 
 INDEX_LEVEL_IN_LOG = 2
 LEVEL_COUNT = (("debug", 0), ("info", 0), ("warning", 0), ("error", 0), ("critical", 0))
@@ -11,11 +12,7 @@ class EndpointClass:
 
     def __init__(self, name_api: str) -> None:
         self.name_api: str = name_api
-        self.count_level: dict[str, 0] = dict(LEVEL_COUNT)
-
-    def count_error(self):
-        return (self.count_level["debug"] + self.count_level["info"] +
-                self.count_level["warning"] + self.count_level["error"] + self.count_level["critical"])
+        self.count_level: dict[str, int] = dict(LEVEL_COUNT)
 
 
 def read_log_file(name_file: str) -> dict[str, EndpointClass]:
@@ -35,18 +32,40 @@ def read_log_file(name_file: str) -> dict[str, EndpointClass]:
                 else:
                     dict_endpoint[name_api].count_level[level_log] += 1
 
-
         return dict_endpoint
 
 
 def gen_report(name_files: list[str], name_report: str):
-    slot_report: dict[str, dict[str, EndpointClass]] = dict()
-    log_endpoint: dict[str, EndpointClass] = read_log_file(name_files[0])
+    with Pool(processes=cpu_count()) as pod:
+        slot_reports: list[dict[str, EndpointClass]] = pod.map(read_log_file, name_files)
 
-    for key, val in log_endpoint.items():
-        print("key:", key)
-        for key_l, val_l in val.count_level.items():
-            print("level:", key_l, "count:", val_l)
+    resul_report: dict[str, EndpointClass] = dict()
+    all_level_error: dict[str, int] = dict(LEVEL_COUNT)
+
+    for report in slot_reports:
+        for api, api_count_level in report.items():
+            if resul_report.get(api) is None:
+                resul_report[api] = api_count_level
+                for key_api, error_api in api_count_level.count_level.items():
+                    all_level_error[key_api] += error_api
+            else:
+                for key, val in api_count_level.count_level.items():
+                    resul_report[api].count_level[key] += val
+                    all_level_error[key] += val
+
+    with open(name_report, "w") as f:
+        for key, val in resul_report.items():
+            print("key:", key)
+            f.write(f"HANDLER {key} \n")
+            for key_l, val_l in val.count_level.items():
+                f.write(f"level: {key_l} count: {val_l} \n")
+                print("level:", key_l, "count:", val_l)
+
+        f.write("-" * 20)
+        print("-" * 20)
+        for key, val in all_level_error.items():
+            f.write(f"level: {key} count: {val} \n")
+            print("level:", key, "count:", val)
 
 
 def check_files(name_files: list[str]) -> bool:
@@ -55,7 +74,6 @@ def check_files(name_files: list[str]) -> bool:
 
 
 def main():
-    #    ['main.py', 'logs/app1.log', 'logs/app2.log', 'logs/app3.log', '--report', 'handlers']
     if len(sys.argv) < 2:
         sys.exit("Необходимо задать входные параметры")
 
