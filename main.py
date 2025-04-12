@@ -70,7 +70,38 @@ def write_report_to_file(
         f.write(record_down)
 
 
-def gen_report(name_files: list[str], name_report: str) -> None:
+def write_report_to_console(
+    resul_report: dict[str, EndpointClass],
+    all_level_error: dict[str, int],
+) -> None:
+    total_req: int = 0
+    record_down: str = " ".ljust(30)
+    for _, val in all_level_error.items():
+        total_req = total_req + val
+        record_down = record_down + str(val).ljust(10)
+    record_down = record_down
+
+    print(f"Total requests: {total_req}")
+    header: str = (
+        "HANDLER".ljust(30)
+        + "DEBUG".ljust(10)
+        + "INFO".ljust(10)
+        + "WARNING".ljust(10)
+        + "ERROR".ljust(10)
+        + "CRITICAL".ljust(10)
+    )
+    print(header)
+
+    for key, endpoint in resul_report.items():
+        record_log: str = key.ljust(30)
+        for key_l, val_l in endpoint.count_level.items():
+            record_log = record_log + str(val_l).ljust(10)
+        # record_log = record_log + "\n"
+        print(record_log)
+    print(record_down)
+
+
+def gen_report(name_files: list[str], name_report: str | None) -> None:
     with Pool(processes=cpu_count()) as pod:
         slot_reports: list[dict[str, EndpointClass]] = pod.map(
             read_log_file, name_files
@@ -92,7 +123,10 @@ def gen_report(name_files: list[str], name_report: str) -> None:
 
     resul_report_sorted = dict(sorted(resul_report.items()))
 
-    write_report_to_file(resul_report_sorted, all_level_error, name_report)
+    if name_report:
+        write_report_to_file(resul_report_sorted, all_level_error, name_report)
+    else:
+        write_report_to_console(resul_report_sorted, all_level_error)
 
 
 def check_files(name_files: list[str]) -> bool:
@@ -109,10 +143,12 @@ def main() -> None:
     if len(name_files) == 0:
         sys.exit("Не указаны лог файлы с расширением *.log")
 
-    name_report: str = "handlers"
+    name_report: str | None = None
     if "--report" in sys.argv:
         if sys.argv[-2] == "--report":
             name_report = sys.argv[-1]
+            if not name_report.isalnum():
+                sys.exit("Имя отчета должно содержать только буквы и цифры")
         else:
             sys.exit(
                 "Аргумент --report указывается в конце команды с указанием имени отчета"
