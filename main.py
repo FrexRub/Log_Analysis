@@ -23,7 +23,7 @@ def read_log_file(name_file: str) -> dict[str, EndpointClass]:
                 level_log: str = str_log[INDEX_LEVEL_IN_LOG].lower()
 
                 result = re.search(r"\s\/\S+", line)
-                name_api: str | None = result.group(0) if result else None
+                name_api: str | None = result.group(0).strip() if result else None
 
                 if name_api is not None:
                     if dict_endpoint.get(name_api) is None:
