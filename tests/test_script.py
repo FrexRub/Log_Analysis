@@ -2,7 +2,15 @@ import sys
 import pytest
 from unittest.mock import patch, mock_open
 
-from main import main, check_files, EndpointClass, read_log_file
+from main import (
+    main,
+    check_files,
+    EndpointClass,
+    read_log_file,
+    write_report_to_file,
+    write_report_to_console,
+    gen_report,
+)
 
 
 def test_without_args():
@@ -89,3 +97,65 @@ def test_read_log_file():
         assert result["/api/v1/reviews/"].count_level["info"] == 2
         assert result["/admin/dashboard/"].count_level["info"] == 1
         assert result["/api/v1/support/"].count_level["error"] == 1
+
+
+def test_write_report_to_file(tmp_path):
+    report_file = tmp_path / "report.txt"
+    endpoints = {"/api/users": EndpointClass()}
+    endpoints["/api/users"].count_level["info"] = 5
+    all_levels = {"debug": 0, "info": 5, "warning": 0, "error": 0, "critical": 0}
+
+    write_report_to_file(endpoints, all_levels, str(report_file))
+    content = report_file.read_text()
+
+    assert "Total requests: 5" in content
+    assert "HANDLER" in content
+    assert "/api/users" in content
+    assert "5" in content
+
+
+def test_write_report_to_console(capsys):
+    endpoints = {"/api/users": EndpointClass()}
+    endpoints["/api/users"].count_level["error"] = 2
+    all_levels = {"debug": 0, "info": 0, "warning": 0, "error": 2, "critical": 0}
+
+    write_report_to_console(endpoints, all_levels)
+
+    out, err = capsys.readouterr()
+    assert "Total requests: 2" in out
+    assert "HANDLER" in out
+    assert "/api/users" in out
+    assert "2" in out
+
+
+@patch("main.Pool")
+def test_gen_report_with_file(mock_pool, tmp_path):
+    mock_pool.return_value.__enter__.return_value.map.return_value = [
+        {"/api/users": EndpointClass()}
+    ]
+
+    report_file = tmp_path / "report.txt"
+    gen_report(["app.log"], str(report_file))
+
+    assert report_file.exists()
+
+
+@patch("main.Pool")
+def test_gen_report_with_console_output(mock_pool, capsys):
+    endpoint = EndpointClass()
+    endpoint.count_level = {
+        "debug": 0,
+        "info": 0,
+        "warning": 5,
+        "error": 0,
+        "critical": 0,
+    }
+
+    mock_pool.return_value.__enter__.return_value.map.return_value = [
+        {"/api/users": endpoint}
+    ]
+
+    gen_report(["app.log"], None)
+
+    out, err = capsys.readouterr()
+    assert "Total requests: 5" in out
