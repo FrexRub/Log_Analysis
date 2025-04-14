@@ -73,7 +73,7 @@ def write_report_to_file(
     record_down = record_down + "\n"
 
     with open(name_report, "w") as f:
-        f.write(f"Total requests: {total_req}\n")
+        f.write(f"Total requests: {total_req}\n\n")
         f.write(HEADER + "\n")
 
         for key, endpoint in resul_report.items():
@@ -103,7 +103,7 @@ def write_report_to_console(
         record_down = record_down + str(val).ljust(10)
     record_down = record_down
 
-    print(f"Total requests: {total_req}")
+    print(f"Total requests: {total_req}", "\n")
     print(HEADER)
 
     for key, endpoint in resul_report.items():
