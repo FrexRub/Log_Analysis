@@ -40,6 +40,14 @@ HANDLER               	DEBUG  	INFO   	WARNING	ERROR  	CRITICAL
                         178    	494    	96     	116    	116
 ```
 
+Текущая структура строки лог-файла:
+
+2025-03-28 12:21:51,000 INFO django.request: GET /admin/dashboard/ 200 OK
+
+Уровень логирования расположен на 3-й позиции, что соответствует INDEX_LEVEL_IN_LOG = 2.
+
+В случае изменения позиции уровня логирования необходимо скорректировать INDEX_LEVEL_IN_LOG.
+
 
 ## Licence
 
