@@ -6,6 +6,15 @@ from multiprocessing import Pool, cpu_count
 INDEX_LEVEL_IN_LOG = 2
 LEVEL_COUNT = (("debug", 0), ("info", 0), ("warning", 0), ("error", 0), ("critical", 0))
 
+HEADER: str = (
+        "HANDLER".ljust(30)
+        + "DEBUG".ljust(10)
+        + "INFO".ljust(10)
+        + "WARNING".ljust(10)
+        + "ERROR".ljust(10)
+        + "CRITICAL".ljust(10)
+)
+
 
 class EndpointClass:
     __slots__ = ("count_level",)
@@ -15,6 +24,13 @@ class EndpointClass:
 
 
 def read_log_file(name_file: str) -> dict[str, EndpointClass]:
+    """
+    Чтение и обработка лог-файла
+    :param name_file: имя лог-файла
+    :type name_file: str
+    :rtype: dict[str, EndpointClass]
+    :return: возвращает словарь с данными по уровням логирования по каждой ручке
+    """
     dict_endpoint: dict[str, EndpointClass] = dict()
     with open(name_file, "r", encoding="utf-8") as file:
         for line in file:
@@ -36,10 +52,19 @@ def read_log_file(name_file: str) -> dict[str, EndpointClass]:
 
 
 def write_report_to_file(
-    resul_report: dict[str, EndpointClass],
-    all_level_error: dict[str, int],
-    name_report: str,
+        resul_report: dict[str, EndpointClass],
+        all_level_error: dict[str, int],
+        name_report: str,
 ) -> None:
+    """
+    Формирование и запись отчета в файл
+    :param resul_report: словарь с данными по уровням логирования по каждой ручке
+    :type resul_report: dict[str, EndpointClass]
+    :param all_level_error: словарь с общими данными по уровням логирования
+    :type all_level_error: dict[str, int]
+    :param name_report: имя файла формируемого отчета
+    :type name_report: str
+    """
     total_req: int = 0
     record_down: str = " ".ljust(30)
     for _, val in all_level_error.items():
@@ -49,17 +74,7 @@ def write_report_to_file(
 
     with open(name_report, "w") as f:
         f.write(f"Total requests: {total_req}\n")
-
-        header: str = (
-            "HANDLER".ljust(30)
-            + "DEBUG".ljust(10)
-            + "INFO".ljust(10)
-            + "WARNING".ljust(10)
-            + "ERROR".ljust(10)
-            + "CRITICAL".ljust(10)
-            + "\n"
-        )
-        f.write(header)
+        f.write(HEADER + "\n")
 
         for key, endpoint in resul_report.items():
             record_log: str = key.ljust(30)
@@ -71,9 +86,16 @@ def write_report_to_file(
 
 
 def write_report_to_console(
-    resul_report: dict[str, EndpointClass],
-    all_level_error: dict[str, int],
+        resul_report: dict[str, EndpointClass],
+        all_level_error: dict[str, int],
 ) -> None:
+    """
+    Формирование и вывод отчета на консоль
+    :param resul_report: словарь с данными по уровням логирования по каждой ручке
+    :type resul_report: dict[str, EndpointClass]
+    :param all_level_error: словарь с общими данными по уровням логирования
+    :type all_level_error: dict[str, int]
+    """
     total_req: int = 0
     record_down: str = " ".ljust(30)
     for _, val in all_level_error.items():
@@ -82,26 +104,25 @@ def write_report_to_console(
     record_down = record_down
 
     print(f"Total requests: {total_req}")
-    header: str = (
-        "HANDLER".ljust(30)
-        + "DEBUG".ljust(10)
-        + "INFO".ljust(10)
-        + "WARNING".ljust(10)
-        + "ERROR".ljust(10)
-        + "CRITICAL".ljust(10)
-    )
-    print(header)
+    print(HEADER)
 
     for key, endpoint in resul_report.items():
         record_log: str = key.ljust(30)
         for key_l, val_l in endpoint.count_level.items():
             record_log = record_log + str(val_l).ljust(10)
-        # record_log = record_log + "\n"
+
         print(record_log)
     print(record_down)
 
 
 def gen_report(name_files: list[str], name_report: str | None) -> None:
+    """
+    Подготовка данных для формирования отчетов
+    :param name_files: список имен лог-файлов
+    :type name_files: list[str]
+    :param name_report: имя файла отчета (при необходимости)
+    :type name_report: str | None
+    """
     with Pool(processes=cpu_count()) as pod:
         slot_reports: list[dict[str, EndpointClass]] = pod.map(
             read_log_file, name_files
@@ -130,6 +151,13 @@ def gen_report(name_files: list[str], name_report: str | None) -> None:
 
 
 def check_files(name_files: list[str]) -> bool:
+    """
+    Проверка наличия файлов
+    :param name_files: список имен лог-файлов
+    :type name_files: list[str]
+    :rtype: bool
+    :return: при наличии всех файлов - True, при отсутствии хотя бы одного файла - False
+    """
     ls_fl: list[bool] = [os.path.isfile(name) for name in name_files]
     return all(ls_fl)
 
